@@ -71,13 +71,6 @@ def externals():
     )
 
     new_git_repository(
-        name="jemalloc",
-        remote="https://github.com/jemalloc/jemalloc.git",
-        commit="e8a63b87c36ac814272d73b503658431d2000055",
-        build_file="//:jemalloc.BUILD",
-    )
-
-    new_git_repository(
         name="progressbar",
         remote="https://github.com/doches/progressbar.git",
         commit="c4c54f891ab05cfc411ec5c2ed147dd4cad1ccf3",
