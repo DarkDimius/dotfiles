@@ -1,0 +1,116 @@
+# C / C++ Options
+# build --copt=--std=c++14 # breaks c dependencies on mac
+build --cxxopt=--std=c++14
+
+build --copt=-fno-omit-frame-pointer
+build --cxxopt=-fno-omit-frame-pointer
+
+build --copt=-fstack-protector
+build --cxxopt=-fstack-protector
+
+build --copt=-Werror
+build --cxxopt=-Werror
+
+build --host_cxxopt=-O0
+build --host_copt=-O0
+build --host_cxxopt=-DFORCE_DEBUG
+build --host_copt=-DFORCE_DEBUG
+
+# We shell out to homebrew and ruby. Hardcode the most likely places
+# to find them on both Linux and OS X
+build --action_env PATH=/usr/local/bin:/usr/local/opt/bison/bin:/usr/bin:/bin
+
+# The MacOS CROSSTOOL in bazel defines _FORTIFY_SOURCE both on
+# <command line>:1:9: and <built-in>:355:9: so sadly we turn them all off
+build --copt=-Wno-macro-redefined
+build --cxxopt=-Wno-macro-redefined
+
+build:dbg --copt=-O0
+build:dbg --cxxopt=-O0
+build:dbg --compilation_mode=dbg
+build:dbg --config=debugsymbols
+build:dbg --config=nopie
+
+# release version: optimized, with debug symbols and version information
+build:release --compilation_mode=opt
+#build:release --config=debugsymbols
+build:release --strip=always
+build:release --config=nopie
+build:release --config=lto
+build:release --config=native
+build:release --stamp
+
+
+# CI uses a funny build, with debug code enabled but compiled with optimizations.
+# intentionally does not reuse --config=debugsymbols because we want to have a sandboxed build
+build:ci --copt=-DFORCE_DEBUG
+build:ci --copt=-g3
+build:ci --cxxopt=-DFORCE_DEBUG
+build:ci --cxxopt=-g3
+
+# Used to build --stamp build that contains version and build time.
+#build --workspace_status_command=tools/buildstamp/get_workspace_status
+
+# LTO build. Much longer compilation time. Smaller size and better perf.
+build:lto --copt=-flto=thin
+build:lto --cxxopt=-flto=thin
+build:lto --linkopt=-flto=thin
+build:lto --config=nopie
+
+# It's useful to be able to write `config_setting` rules for "this is
+# an unsanitized build", but we can't express "copt does not contain
+# -fsanitize". So we set this `--define` and unset it if we're using a
+# sanitizer.
+build --define unsanitized=true
+# sanitize build: run with ASAN and UBSAN. Catches most memory and
+# undefined-behavior errors, substantially larger and slower binary.
+build:sanitize --copt=-fsanitize=address
+build:sanitize --cxxopt=-fsanitize=address
+build:sanitize --linkopt=-fsanitize=address
+build:sanitize --copt=-fsanitize=undefined --copt=-fno-sanitize-recover=undefined
+build:sanitize --cxxopt=-fsanitize=undefined --copt=-fno-sanitize-recover=undefined
+build:sanitize --linkopt=-fsanitize=undefined --copt=-fno-sanitize-recover=undefined
+build:sanitize --define unsanitized=false
+
+# For some reason, on our Linux builds, -fsanitize=undefined fails
+# with link errors without an explicit link of -lubsan. Per
+# https://github.com/google/oss-fuzz/issues/713 it might be related to
+# the fact that bazel uses $CC as the linker even for C++.
+build:sanitize --features=force-libubsan
+
+build:tstan --copt=-fsanitize=thread
+build:tstan --cxxopt==-fsanitize=thread
+build:tstan --linkopt=-fsanitize=thread
+build:sanitize --define unsanitized=false
+
+# Build optimized for executable size. Can be faster if size of executable code is a bottleneck.
+build:size --linkopt=-Os
+build:size --copt=-Os
+build:size --cxxopt=-Os
+
+# Try to statically link as much as possible
+build:more-static --define more-static=true
+
+### Debug symbols on OS X. ###
+# From https://github.com/RobotLocomotion/drake/blob/master/tools/cc_toolchain/bazel.rc
+# See https://github.com/bazelbuild/bazel/issues/2537
+build:debugsymbols --copt=-g3
+build:debugsymbols --cxxopt=-g3
+build:debugsymbols --linkopt=-g3
+build:debugsymbols --spawn_strategy=standalone
+build:debugsymbols --genrule_strategy=standalone
+
+build:nopie --linkopt=-fno-pie
+build:nopie --copt=-fno-pie
+build:nopie --cxxopt=-fno-pie
+
+build:native --linkopt=-march=native
+build:native --copt=-march=native
+build:native --cxxopt=-march=native
+
+build --strip=never
+
+# Enable nice UIs. Taken from bazel.rc of Bazel itself.
+build --experimental_skyframe_target_pattern_evaluator
+common --experimental_ui --experimental_ui_actions_shown 8
+common --show_progress_rate_limit=0.25
